@@ -1,0 +1,107 @@
+import 'package:echo/features/library/domain/entities/favorite_song.dart';
+import 'package:echo/features/library/domain/entities/favorite_album.dart';
+import 'package:echo/features/library/domain/entities/favorite_artist.dart';
+import 'package:echo/features/library/domain/entities/downloaded_song.dart';
+import 'package:echo/features/library/domain/entities/recently_played.dart';
+import 'package:echo/features/library/domain/entities/collection.dart';
+import 'package:echo/shared/music/domain/song.dart';
+import 'package:echo/shared/music/domain/album.dart';
+import 'package:echo/shared/music/domain/artist.dart';
+import 'package:echo/shared/music/domain/playlist.dart';
+import 'package:echo/features/library/domain/repositories/library_repository.dart';
+
+class LibraryRepositoryImpl implements LibraryRepository {
+  final List<FavoriteSong> _favoriteSongs = [];
+  final List<FavoriteAlbum> _favoriteAlbums = [];
+  final List<FavoriteArtist> _favoriteArtists = [];
+  final List<DownloadedSong> _downloadedSongs = [];
+  final List<RecentlyPlayed> _recentlyPlayed = [];
+  final List<Collection> _collections = [];
+
+  @override
+  List<FavoriteSong> getFavoriteSongs() => List.unmodifiable(_favoriteSongs);
+
+  @override
+  List<FavoriteAlbum> getFavoriteAlbums() => List.unmodifiable(_favoriteAlbums);
+
+  @override
+  List<FavoriteArtist> getFavoriteArtists() => List.unmodifiable(_favoriteArtists);
+
+  @override
+  List<DownloadedSong> getDownloadedSongs() => List.unmodifiable(_downloadedSongs);
+
+  @override
+  List<RecentlyPlayed> getRecentlyPlayed() => List.unmodifiable(_recentlyPlayed);
+
+  @override
+  List<Collection> getCollections() => List.unmodifiable(_collections);
+
+  @override
+  void addFavoriteSong(String songId) {
+    _favoriteSongs.add(FavoriteSong(songId: songId, addedAt: DateTime.now()));
+  }
+
+  @override
+  void removeFavoriteSong(String songId) {
+    _favoriteSongs.removeWhere((s) => s.songId == songId);
+  }
+
+  @override
+  void addFavoriteAlbum(String albumId) {
+    _favoriteAlbums.add(FavoriteAlbum(albumId: albumId, addedAt: DateTime.now()));
+  }
+
+  @override
+  void removeFavoriteAlbum(String albumId) {
+    _favoriteAlbums.removeWhere((a) => a.albumId == albumId);
+  }
+
+  @override
+  void addFavoriteArtist(String artistId) {
+    _favoriteArtists
+        .add(FavoriteArtist(artistId: artistId, addedAt: DateTime.now()));
+  }
+
+  @override
+  void removeFavoriteArtist(String artistId) {
+    _favoriteArtists.removeWhere((a) => a.artistId == artistId);
+  }
+
+  @override
+  void addDownload(String songId) {
+    _downloadedSongs.add(
+        DownloadedSong(songId: songId, downloadedAt: DateTime.now()));
+  }
+
+  @override
+  void removeDownload(String songId) {
+    _downloadedSongs.removeWhere((d) => d.songId == songId);
+  }
+
+  @override
+  void addRecentlyPlayed(String songId) {
+    _recentlyPlayed.removeWhere((r) => r.songId == songId);
+    _recentlyPlayed.insert(0, RecentlyPlayed(songId: songId, playedAt: DateTime.now()));
+    if (_recentlyPlayed.length > 50) {
+      _recentlyPlayed.removeRange(50, _recentlyPlayed.length);
+    }
+  }
+
+  @override
+  List<Song> getFavoriteSongsSongs() => const [];
+
+  @override
+  List<Album> getFavoriteAlbumsAlbums() => const [];
+
+  @override
+  List<Artist> getFavoriteArtistsArtists() => const [];
+
+  @override
+  List<Song> getDownloadedSongsSongs() => const [];
+
+  @override
+  List<Song> getRecentlyPlayedSongs() => const [];
+
+  @override
+  List<Playlist> getUserPlaylists() => const [];
+}
