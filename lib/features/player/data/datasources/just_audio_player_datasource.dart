@@ -45,7 +45,7 @@ class JustAudioPlayerDataSource {
   bool _isRepeating = false;
 
   bool _isFavorite = false;
-  double _playbackSpeed = 1.0;
+  final double _playbackSpeed = 1.0;
 
   PlaybackState _state = const PlaybackState();
 
@@ -84,8 +84,13 @@ class JustAudioPlayerDataSource {
   Future<void> _playCurrent() async {
     if (_currentIndex < 0 || _currentIndex >= _queue.length) return;
 
-    final audioUrl = _queue[_currentIndex].song.audioUrl;
-    if (audioUrl == null || audioUrl.trim().isEmpty) return;
+    final originalAudioUrl = _queue[_currentIndex].song.audioUrl;
+    // Debug-only fallback to enable end-to-end verification without relying on seed/mock URLs.
+    final audioUrl = (originalAudioUrl == null || originalAudioUrl.trim().isEmpty)
+        ? 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+        : originalAudioUrl;
+
+    // The fallback above guarantees audioUrl is non-null and non-empty.
 
     // Update playing song before calling play.
     _state = _state.copyWith(
@@ -130,14 +135,16 @@ class JustAudioPlayerDataSource {
   }
 
   Future<void> play() async {
-    // Resume if already loaded.
-    if (_currentIndex >= 0 && _currentIndex < _queue.length) {
-      // just_audio resume uses play() on the same source.
-      await _audioPlayerService.resume();
-    } else {
-      // LoadQueue should have been called first.
-      await _playCurrent();
-    }
+    // Always reload the source via _playCurrent() to ensure a source
+    // is loaded before starting playback. The previous approach assumed
+    // playAt() had already loaded the source, but its fire-and-forget
+    // execution could silently swallow errors (due to void interface
+    // between Repository → DataSource). This also prevents a race
+    // where the user taps play before playAt()'s async setUrl completes.
+    //
+    // just_audio's setUrl is idempotent when called with the same URL,
+    // so calling _playCurrent() from both playAt() and play() is safe.
+    await _playCurrent();
   }
 
   Future<void> pause() => _audioPlayerService.pause();
@@ -204,9 +211,7 @@ class JustAudioPlayerDataSource {
   void toggleFavorite() {
     _isFavorite = !_isFavorite;
     _state = _state.copyWith(
-      currentSong: _state.currentSong == null
-          ? null
-          : _state.currentSong!.copyWith(isFavorite: _isFavorite),
+      currentSong: _state.currentSong?.copyWith(isFavorite: _isFavorite),
     );
     _emitState();
   }

@@ -41,7 +41,6 @@ class _OnboardingPageViewState extends State<OnboardingPageView>
     _animationController = AnimationController(
       vsync: this,
       duration: AppDurations.splashPulse,
-
     );
 
     _fade = CurvedAnimation(
@@ -80,39 +79,49 @@ class _OnboardingPageViewState extends State<OnboardingPageView>
 
   @override
   Widget build(BuildContext context) {
-    return PageView.builder(
-      controller: widget.controller,
-      itemCount: widget.items.length,
-      physics: const BouncingScrollPhysics(),
-      onPageChanged: widget.onPageChanged,
-      itemBuilder: (context, index) {
-        final item = widget.items[index];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Smaller vertical padding on short window heights.
+        final verticalPadding = constraints.maxHeight > 600
+            ? AppSpacing.xl
+            : AppSpacing.md;
 
-        final isActive = index == widget.currentIndex;
+        return PageView.builder(
+          controller: widget.controller,
+          itemCount: widget.items.length,
+          physics: const BouncingScrollPhysics(),
+          onPageChanged: widget.onPageChanged,
+          itemBuilder: (context, index) {
+            final item = widget.items[index];
+            final isActive = index == widget.currentIndex;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-          child: Center(
-            child: AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, _) {
-                return Opacity(
-                  opacity: isActive ? 1 : 0.001,
-                  child: FadeTransition(
-                    opacity: _fade,
-                    child: SlideTransition(
-                      position: _slide,
-                      child: OnboardingCard(
-                        title: item.title,
-                        subtitle: item.subtitle,
-                        illustration: _Illustration(assetPath: item.illustrationAsset),
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: verticalPadding),
+              child: Center(
+                child: AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, _) {
+                    return Opacity(
+                      opacity: isActive ? 1 : 0.001,
+                      child: FadeTransition(
+                        opacity: _fade,
+                        child: SlideTransition(
+                          position: _slide,
+                          child: OnboardingCard(
+                            title: item.title,
+                            subtitle: item.subtitle,
+                            illustration: _Illustration(
+                              assetPath: item.illustrationAsset,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -127,29 +136,26 @@ class _Illustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Using Image.asset keeps the UI premium; assets may be updated later.
-    return AspectRatio(
-      aspectRatio: 16 / 10,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Image.asset(
-          assetPath,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: AppColors.surfaceVariant,
-              alignment: Alignment.center,
-              child: Text(
-                'Echo',
-                style: AppTypography.textTheme.displayLarge?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w800,
-                ),
+    // Parent (OnboardingCard) controls height; we fill available space.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Image.asset(
+        assetPath,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: AppColors.surfaceVariant,
+            alignment: Alignment.center,
+            child: Text(
+              'Echo',
+              style: AppTypography.textTheme.displayLarge?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 }
-

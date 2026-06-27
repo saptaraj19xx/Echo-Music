@@ -91,66 +91,74 @@ class _OnboardingPageState extends State<OnboardingPage>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xl,
-                vertical: AppSpacing.md,
-              ),
-              child: Row(
-                children: [
-                  TextButton(
-                    onPressed: _onSkip,
-                    child: Text(
-                      'Skip',
-                      style: AppTypography.textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // On very short windows (< 500px), reduce bottom area padding.
+            final isShortWindow = constraints.maxHeight < 500;
+            final bottomPadding = isShortWindow ? AppSpacing.md : AppSpacing.lg;
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                    vertical: AppSpacing.md,
+                  ),
+                  child: Row(
+                    children: [
+                      TextButton(
+                        onPressed: _onSkip,
+                        child: Text(
+                          'Skip',
+                          style: AppTypography.textTheme.bodyLarge?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
-                    ),
+                      const Spacer(),
+                      OnboardingIndicator(
+                        count: _items.length,
+                        currentIndex: _currentIndex,
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  OnboardingIndicator(
-                    count: _items.length,
+                ),
+                Expanded(
+                  child: OnboardingPageView(
+                    items: _items,
+                    controller: _pageController,
                     currentIndex: _currentIndex,
+                    onPageChanged: (i) {
+                      setState(() => _currentIndex = i);
+                    },
                   ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: OnboardingPageView(
-                items: _items,
-                controller: _pageController,
-                currentIndex: _currentIndex,
-                onPageChanged: (i) {
-                  setState(() => _currentIndex = i);
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xl,
-                vertical: AppSpacing.lg,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  OnboardingButton(
-                    label: isLast ? 'Continue' : 'Next',
-                    onPressed: _onNext,
-                    variantPrimary: true,
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                    vertical: bottomPadding,
                   ),
-                  SizedBox(height: AppSpacing.sm),
-                  Text(
-                    isLast ? 'Continue' : 'Swipe to explore',
-                    style: AppTypography.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textHint,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OnboardingButton(
+                        label: isLast ? 'Continue' : 'Next',
+                        onPressed: _onNext,
+                        variantPrimary: true,
+                      ),
+                      SizedBox(height: AppSpacing.sm),
+                      Text(
+                        isLast ? 'Continue' : 'Swipe to explore',
+                        style: AppTypography.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

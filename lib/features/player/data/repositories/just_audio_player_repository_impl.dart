@@ -20,13 +20,17 @@ class JustAudioPlayerRepositoryImpl implements PlayerRepository {
   }
 
   @override
-  void playAt(int index) => _dataSource.playAt(index);
+  void playAt(int index) {
+    _dataSource.playAt(index);
+  }
 
   @override
   void togglePlayPause() => _dataSource.togglePlayPause();
 
   @override
-  void play() => _dataSource.play();
+  void play() {
+    _dataSource.play();
+  }
 
   @override
   void pause() => _dataSource.pause();
