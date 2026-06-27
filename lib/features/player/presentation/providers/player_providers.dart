@@ -1,25 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:echo/shared/music/domain/song.dart';
-import 'package:echo/features/player/data/datasources/mock_player_datasource.dart';
-import 'package:echo/features/player/data/repositories/player_repository_impl.dart';
 import 'package:echo/features/player/domain/entities/playback_state.dart';
 import 'package:echo/features/player/domain/repositories/player_repository.dart';
 import 'package:echo/features/player/domain/usecases/player_use_cases.dart';
 
+import 'package:echo/features/player/data/datasources/just_audio_player_datasource_provider.dart';
+
+import 'package:echo/features/player/data/repositories/just_audio_player_repository_impl.dart';
+
+
+
+
+
 // ---------------------------------------------------------------------------
 // PlayerRepository (singleton — shared across the app)
 // ---------------------------------------------------------------------------
-final _mockDataSourceProvider = Provider<MockPlayerDataSource>((ref) {
-  final ds = MockPlayerDataSource();
-  ref.onDispose(() => ds.dispose());
-  return ds;
+final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
+  // Bridge to the real AudioPlayerService backend.
+  final justAudioDataSource = ref.watch(justAudioPlayerDataSourceProvider);
+  return JustAudioPlayerRepositoryImpl(justAudioDataSource);
 });
 
-final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
-  final dataSource = ref.watch(_mockDataSourceProvider);
-  return PlayerRepositoryImpl(dataSource);
-});
+
+
 
 // ---------------------------------------------------------------------------
 // Use cases
