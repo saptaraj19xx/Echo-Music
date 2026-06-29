@@ -5,9 +5,11 @@ import 'package:echo/app/theme/app_radius.dart';
 import 'package:echo/app/theme/app_spacing.dart';
 import 'package:echo/app/theme/app_typography.dart';
 import 'package:echo/features/player/domain/entities/queue_item.dart';
+import 'package:echo/features/player/providers/queue_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Bottom sheet that displays the playback queue.
-class QueueBottomSheet extends StatelessWidget {
+/// Premium bottom sheet that displays the playback queue with reorder support.
+class QueueBottomSheet extends ConsumerWidget {
   final List<QueueItem> queue;
   final int currentIndex;
 
@@ -37,7 +39,9 @@ class QueueBottomSheet extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final queueState = ref.watch(queueNotifierProvider);
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -57,14 +61,35 @@ class QueueBottomSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            // Header
-            Text(
-              'Playing Queue',
-              style: AppTypography.textTheme.titleLarge,
+            // Header with queue length
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Playing Queue',
+                  style: AppTypography.textTheme.titleLarge,
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    color: AppColors.surfaceVariant,
+                  ),
+                  child: Text(
+                    '${queueState.length} songs',
+                    style: AppTypography.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
             // Queue list
-            if (queue.isEmpty)
+            if (queueState.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
                 child: Center(
@@ -78,17 +103,27 @@ class QueueBottomSheet extends StatelessWidget {
               )
             else
               Flexible(
-                child: ListView.separated(
+                child: ReorderableListView.builder(
                   shrinkWrap: true,
-                  itemCount: queue.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (_, index) {
-                    final item = queue[index];
-                    final isCurrent = index == currentIndex;
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: queueState.items.length,
+                  onReorder: (oldIndex, newIndex) {
+                    ref.read(queueNotifierProvider.notifier).reorder(oldIndex, newIndex);
+                  },
+                  itemBuilder: (context, index) {
+                    final item = queueState.items[index];
+                    final isCurrent = index == queueState.currentIndex;
                     return _QueueTile(
+                      key: ValueKey(item.song.id),
                       item: item,
                       isCurrent: isCurrent,
+                      onTap: () {
+                        ref.read(queueNotifierProvider.notifier).playAt(index);
+                        Navigator.of(context).pop();
+                      },
+                      onRemove: () {
+                        ref.read(queueNotifierProvider.notifier).removeAt(index);
+                      },
                     );
                   },
                 ),
@@ -103,79 +138,84 @@ class QueueBottomSheet extends StatelessWidget {
 class _QueueTile extends StatelessWidget {
   final QueueItem item;
   final bool isCurrent;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
 
   const _QueueTile({
     required this.item,
     required this.isCurrent,
+    required this.onTap,
+    required this.onRemove,
+    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       decoration: BoxDecoration(
         color: isCurrent
-            ? AppColors.primary.withValues(alpha: 0.1)
+            ? AppColors.primary.withValues(alpha: 0.12)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Row(
-        children: [
-          // Album art placeholder
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.music_note_rounded,
+              color: isCurrent
+                  ? AppColors.primary
+                  : AppColors.textHint,
+              size: 24,
             ),
-            child: Center(
-              child: Icon(
-                Icons.music_note_rounded,
-                color: isCurrent
-                    ? AppColors.primary
-                    : AppColors.textHint,
-                size: 24,
+          ),
+        ),
+        title: Text(
+          item.song.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.textTheme.bodyLarge?.copyWith(
+            fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+            color: isCurrent ? AppColors.primary : AppColors.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          item.song.artistName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isCurrent)
+              Icon(
+                Icons.equalizer_rounded,
+                color: AppColors.primary,
+                size: 20,
               ),
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(
+                Icons.close_rounded,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
+              splashRadius: 18,
+              padding: const EdgeInsets.all(8),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          // Song info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.song.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: isCurrent
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.song.artistName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Current indicator
-          if (isCurrent)
-            Icon(
-              Icons.equalizer_rounded,
-              color: AppColors.primary,
-              size: 20,
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

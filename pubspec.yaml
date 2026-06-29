@@ -49,6 +49,8 @@ dependencies:
   just_audio: ^0.10.5
   just_audio_windows: ^0.2.3
 
+  palette_generator: ^0.3.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

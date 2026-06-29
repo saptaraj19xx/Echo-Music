@@ -98,6 +98,8 @@ class PlayerController {
 
   void previous() => _repository.previous();
 
+  void playAt(int index) => _repository.playAt(index);
+
   void seek(Duration position) => _repository.seek(position);
 
   void toggleShuffle() => _repository.toggleShuffle();

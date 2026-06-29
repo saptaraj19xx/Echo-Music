@@ -7,6 +7,9 @@ import 'just_audio_player_datasource.dart';
 /// Riverpod provider for the real [JustAudioPlayerDataSource].
 final justAudioPlayerDataSourceProvider = Provider<JustAudioPlayerDataSource>((ref) {
   final audioPlayerService = ref.watch(audioPlayerProvider);
-  return JustAudioPlayerDataSource(ref, audioPlayerService);
-});
+  final dataSource = JustAudioPlayerDataSource(ref, audioPlayerService);
 
+  ref.onDispose(dataSource.dispose);
+
+  return dataSource;
+});

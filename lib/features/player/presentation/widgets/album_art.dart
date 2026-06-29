@@ -18,6 +18,8 @@ class AlbumArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasArtwork = imageUrl != null && imageUrl!.trim().isNotEmpty;
+
     return Container(
       width: size,
       height: size,
@@ -32,13 +34,37 @@ class AlbumArt extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
+      child: hasArtwork
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _placeholder(),
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return const Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            )
+          : _placeholder(),
+    );
+  }
+
+  Widget _placeholder() => Center(
         child: Icon(
           Icons.music_note_rounded,
           size: size * 0.35,
           color: AppColors.textHint,
         ),
-      ),
-    );
-  }
+      );
 }
