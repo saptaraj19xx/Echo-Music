@@ -115,20 +115,15 @@ class AuthRepository implements AuthRepositoryInterface {
       final mockUser = await _dataSource.continueAsGuest();
       final user = UserModel.fromMockUser(
         id: mockUser.id,
+        // Anonymous users can have a null email; this is valid.
         email: mockUser.email,
         displayName: mockUser.displayName,
         isGuest: mockUser.isGuest,
       ).toEntity();
       return Right(user);
     } on AuthException catch (e) {
+      // Only propagate actual auth exceptions.
       return Left(e);
-    } catch (e) {
-      return Left(
-        AuthException(
-          code: AuthException.unknown,
-          message: 'An unexpected error occurred.',
-        ),
-      );
     }
   }
 

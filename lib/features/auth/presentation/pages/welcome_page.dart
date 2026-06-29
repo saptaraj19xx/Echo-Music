@@ -68,8 +68,12 @@ class _WelcomePageState extends ConsumerState<WelcomePage>
   }
 
   void _handleGuestSignIn() async {
+    // TEMP DIAGNOSTICS: confirm Guest button press
+    // ignore: avoid_print
+    print('[DIAG] WelcomePage: guest button pressed');
     await ref.read(authStateProvider.notifier).continueAsGuest();
   }
+
 
   @override
   Widget build(BuildContext context) {

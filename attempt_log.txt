@@ -1,0 +1,18 @@
+Attempt log - Flutter Windows firebase_auth C2665
+
+Attempt #
+Timestamp:
+pubspec versions used:
+- firebase_core:
+- firebase_auth:
+- cloud_firestore:
+- firebase_storage:
+
+Result:
+- flutter pub get: 
+- flutter analyze:
+- flutter test:
+- flutter build windows:
+
+Notes / remaining error:
+

@@ -65,13 +65,38 @@ class MockAuthDataSource {
 
   /// Guest sign-in using Firebase anonymous authentication.
   Future<MockUser> continueAsGuest() async {
+    // TEMP DIAGNOSTICS: identify exact failing step (do not keep)
+    // 1) before calling AuthAdapter.signInAsGuest()
+    // ignore: avoid_print
+    print('[DIAG] MockAuthDataSource.continueAsGuest(): before signInAsGuest');
+
     try {
+      // 2) immediately after AuthAdapter.signInAsGuest() returns
       final cred = await _authAdapter.signInAsGuest();
-      return _toMockUser(cred.user, isGuestOverride: true);
+
+      // ignore: avoid_print
+      print('[DIAG] MockAuthDataSource.continueAsGuest(): after signInAsGuest (returned)');
+
+      // 3) before calling _toMockUser(...)
+      // ignore: avoid_print
+      print('[DIAG] MockAuthDataSource.continueAsGuest(): before _toMockUser');
+
+      final mockUser = _toMockUser(cred.user, isGuestOverride: true);
+
+      // 4) after _toMockUser(...)
+      // ignore: avoid_print
+      print('[DIAG] MockAuthDataSource.continueAsGuest(): after _toMockUser');
+
+      // 5) before returning to AuthRepository
+      // ignore: avoid_print
+      print('[DIAG] MockAuthDataSource.continueAsGuest(): returning MockUser');
+
+      return mockUser;
     } on FirebaseAuthException catch (e) {
       throw AuthAdapter.mapAuthError(e);
     }
   }
+
 
   /// Get current user.
   Future<MockUser?> getCurrentUser() async {
@@ -86,18 +111,22 @@ class MockAuthDataSource {
 
   MockUser _toMockUser(User? user, {bool isGuestOverride = false}) {
     if (user == null) {
+      // This should only happen if Firebase actually returned no user.
       throw const AuthException(
         code: AuthException.unknown,
         message: 'Authentication failed: missing user.',
       );
     }
 
+    final email = user.email;
+
     return MockUser(
       id: user.uid,
-      email: user.email ?? '',
+      // Anonymous users often have null email; that's not a failure.
+      email: email ?? '',
       // Password is not retrievable from Firebase; keep empty.
       password: '',
-      displayName: user.displayName ?? (user.email?.split('@').first ?? ''),
+      displayName: user.displayName ?? (email?.split('@').first ?? ''),
       photoUrl: user.photoURL,
       isGuest: isGuestOverride || user.isAnonymous,
     );

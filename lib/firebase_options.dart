@@ -50,16 +50,15 @@ class DefaultFirebaseOptions {
     projectId: 'echo-1eb4d',
     storageBucket: 'echo-1eb4d.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyD0ebIJt6OP-iO2DTlbMCEf-pA7Hae_NkQ',
     appId: '1:375201582761:ios:00865a86ba21b91c2063b8',
     messagingSenderId: '375201582761',
     projectId: 'echo-1eb4d',
     storageBucket: 'echo-1eb4d.firebasestorage.app',
+    iosClientId: '375201582761-vc656ttf5n3sjq5k1s5p5321tsauc9lu.apps.googleusercontent.com',
     iosBundleId: 'com.example.echo',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyD0ebIJt6OP-iO2DTlbMCEf-pA7Hae_NkQ',
     appId: '1:375201582761:ios:00865a86ba21b91c2063b8',

@@ -7,6 +7,8 @@ import 'package:echo/app/theme/app_typography.dart';
 import 'package:echo/shared/core/ui_state.dart';
 
 import 'package:echo/shared/music/providers/music_providers.dart';
+import 'package:echo/shared/music/providers/song_providers.dart';
+import 'package:echo/shared/music/domain/song.dart';
 import 'package:echo/features/home/presentation/widgets/album_card.dart';
 import 'package:echo/features/home/presentation/widgets/artist_card.dart';
 import 'package:echo/features/home/presentation/widgets/playlist_card.dart';
@@ -142,12 +144,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     required List<String> trendingSearches,
     required List<dynamic> genres,
   }) {
+    final liveSongs = ref.watch(liveSongsProvider);
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       children: [
         const SizedBox(height: AppSpacing.sm),
 
         // -----------------------------------------------------------
+
         // Recent Searches
         // -----------------------------------------------------------
         if (recentSearches.isNotEmpty) ...[
@@ -256,9 +261,39 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         const SizedBox(height: AppSpacing.lg),
 
         // -----------------------------------------------------------
+        // Songs (Explore feed)
+        // -----------------------------------------------------------
+        liveSongs.when(
+          data: (songs) {
+            if (songs.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionHeader(title: 'Songs'),
+                const SizedBox(height: AppSpacing.sm),
+                ...songs.map(
+                  (song) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: SongCard(
+                      song: song,
+                      onTap: () {},
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+
+        const SizedBox(height: AppSpacing.lg),
+
+        // -----------------------------------------------------------
         // Featured Albums
         // -----------------------------------------------------------
         const _SectionHeader(title: 'Featured Albums'),
+
         const SizedBox(height: AppSpacing.sm),
         Consumer(
           builder: (context, ref, child) {

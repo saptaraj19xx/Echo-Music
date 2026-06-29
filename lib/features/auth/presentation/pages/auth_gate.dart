@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_typography.dart';
-import '../../../../features/home/presentation/pages/home_page.dart';
+import '../../../../features/main_shell/presentation/pages/main_shell_page.dart';
+
 import '../providers/auth_provider.dart';
 import '../providers/auth_state.dart';
 import 'welcome_page.dart';
@@ -22,9 +23,30 @@ class _AuthGateState extends ConsumerState<AuthGate> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authStateProvider.notifier).checkAuthStatus();
+      final notifier = ref.read(authStateProvider.notifier);
+      // ignore: avoid_print
+      print('[DIAG] AuthGate: before checkAuthStatus');
+      notifier.checkAuthStatus().then((_) {
+        final state = ref.read(authStateProvider);
+        if (state is AuthStateAuthenticated) {
+          final user = state.user;
+          // ignore: avoid_print
+          print('[DIAG] AuthGate: currentUser == null? false | uid: ${user.id} | isGuest: ${user.isGuest}');
+          // ignore: avoid_print
+          print('[DIAG] AuthGate: ⛔ User already authenticated → routing to MainShell. Guest flow diagnostics will never execute.');
+        } else if (state is AuthStateUnauthenticated) {
+          // ignore: avoid_print
+          print('[DIAG] AuthGate: currentUser == null? true (unauthenticated)');
+          // ignore: avoid_print
+          print('[DIAG] AuthGate: ✅ WelcomePage shown → Guest flow CAN execute.');
+        } else if (state is AuthStateError) {
+          // ignore: avoid_print
+          print('[DIAG] AuthGate: Error: ${state.message}');
+        }
+      });
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +55,8 @@ class _AuthGateState extends ConsumerState<AuthGate> {
     return switch (authState) {
       AuthStateInitial() => const _AuthLoadingScreen(),
       AuthStateLoading() => const _AuthLoadingScreen(),
-      AuthStateAuthenticated() => const HomePage(),
+      AuthStateAuthenticated() => const MainShellPage(),
+
       AuthStateUnauthenticated() => const WelcomePage(),
       AuthStateError(message: final message) => _AuthErrorScreen(
           message: message,

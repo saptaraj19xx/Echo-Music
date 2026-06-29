@@ -1,0 +1,24 @@
+Goal: fix Windows build failure (firebase_auth_plugin.cpp C2665) on Flutter 3.41.2 with minimum coordinated FlutterFire versions.
+
+Constraint discovered during Attempt #1:
+- Upgrading firebase_auth to ^4.17.0 triggers a dependency solver conflict with just_audio ^0.10.5 web requirements (web >=1.0.0) and firebase_auth web/core constraints.
+
+Therefore next candidate should avoid bumping firebase_auth beyond the threshold that causes web/firebase_core constraint shifts.
+
+Next search strategy:
+1) Keep firebase_auth at 4.16.0 (existing build blocker) and bump firebase_core only within 2.x, if compatible.
+2) Then try bumping firebase_auth minimally (e.g. 4.16.x or 4.18.x) while keeping just_audio compatibility in mind.
+3) For each attempt, change ONLY:
+   - firebase_core
+   - firebase_auth
+   - cloud_firestore
+   - firebase_storage
+
+Verification steps per attempt:
+- flutter pub get
+- flutter analyze
+- flutter test
+- flutter build windows
+
+Stop at the first successful windows build.
+

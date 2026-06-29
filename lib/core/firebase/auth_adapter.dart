@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/errors/auth_exception.dart';
@@ -39,9 +41,33 @@ class AuthAdapter {
       _auth.sendPasswordResetEmail(email: email);
 
   /// Guest login via Firebase anonymous auth.
-  Future<UserCredential> signInAsGuest() {
-    return _auth.signInAnonymously();
+  Future<UserCredential> signInAsGuest() async {
+    // TEMP DIAGNOSTICS: identify exact failing step (do not keep)
+    // 1) before FirebaseAuth.instance.signInAnonymously()
+    // ignore: avoid_print
+    print('[DIAG] AuthAdapter.signInAsGuest(): before signInAnonymously');
+
+    try {
+      final cred = await _auth
+          .signInAnonymously()
+          .timeout(const Duration(seconds: 10));
+
+      // 2) immediately after signInAnonymously() returns
+      // ignore: avoid_print
+      print('[DIAG] AuthAdapter.signInAsGuest(): after signInAnonymously (returned)');
+
+      return cred;
+    } on TimeoutException {
+      // ignore: avoid_print
+      print('[DIAG] AuthAdapter.signInAsGuest(): signInAnonymously timed out');
+      rethrow;
+    } on Object {
+      // ignore: avoid_print
+      print('[DIAG] AuthAdapter.signInAsGuest(): signInAnonymously threw');
+      rethrow;
+    }
   }
+
 
   /// Google sign-in using OAuth.
   ///

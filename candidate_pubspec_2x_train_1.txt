@@ -1,0 +1,9 @@
+Candidate FlutterFire release train for Flutter 3.41.2 (earliest Windows fix):
+
+- firebase_core: ^2.32.0
+- firebase_auth: ^4.16.0
+- cloud_firestore: ^4.15.0
+- firebase_storage: ^11.6.5
+
+This file is a placeholder until we identify the specific release train versions that remove the Windows C2665.
+
