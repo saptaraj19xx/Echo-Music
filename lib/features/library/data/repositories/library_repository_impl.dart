@@ -3,7 +3,9 @@ import 'package:echo/features/library/domain/entities/favorite_album.dart';
 import 'package:echo/features/library/domain/entities/favorite_artist.dart';
 import 'package:echo/features/library/domain/entities/downloaded_song.dart';
 import 'package:echo/features/library/domain/entities/recently_played.dart';
+import 'package:echo/features/library/domain/entities/most_played.dart';
 import 'dart:async';
+
 
 import 'package:echo/features/library/domain/entities/collection.dart';
 import 'package:echo/shared/music/domain/song.dart';
@@ -21,7 +23,9 @@ class LibraryRepositoryImpl implements LibraryRepository {
   final List<FavoriteArtist> _favoriteArtists = [];
   final List<DownloadedSong> _downloadedSongs = [];
   final List<RecentlyPlayed> _recentlyPlayed = [];
+  final List<MostPlayed> _mostPlayed = [];
   final List<Collection> _collections = [];
+
 
   @override
   List<FavoriteSong> getFavoriteSongs() => List.unmodifiable(_favoriteSongs);
@@ -162,6 +166,48 @@ class LibraryRepositoryImpl implements LibraryRepository {
     _recentlyPlayedController.add(List.unmodifiable(_recentlyPlayed));
   }
 
+
+  final StreamController<List<MostPlayed>> _mostPlayedController =
+      StreamController<List<MostPlayed>>.broadcast();
+
+  @override
+  Stream<List<MostPlayed>> watchMostPlayed() => _mostPlayedController.stream;
+
+  @override
+  void addMostPlayedEntry({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required DateTime lastPlayed,
+  }) {
+    final existing = _mostPlayed.where((m) => m.songId == songId).toList();
+    final nextCount = existing.isNotEmpty ? existing.first.playCount + 1 : 1;
+
+    _mostPlayed.removeWhere((m) => m.songId == songId);
+
+
+    _mostPlayed.add(
+      MostPlayed(
+        songId: songId,
+        playCount: nextCount,
+        lastPlayed: lastPlayed,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+      ),
+    );
+
+    _mostPlayed.sort((a, b) {
+      final byCount = b.playCount.compareTo(a.playCount);
+      if (byCount != 0) return byCount;
+      return b.lastPlayed.compareTo(a.lastPlayed);
+    });
+
+    _mostPlayedController.add(List.unmodifiable(_mostPlayed));
+  }
 
   @override
   List<Song> getRecentlyPlayedSongs() => const [];

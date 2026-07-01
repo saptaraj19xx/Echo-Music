@@ -1,5 +1,7 @@
 import 'package:echo/core/firebase/auth_adapter.dart';
 import 'package:echo/core/firebase/firestore_adapter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:echo/features/library/data/mappers/favorite_album_mapper.dart';
 import 'package:echo/features/library/data/mappers/favorite_artist_mapper.dart';
 import 'package:echo/features/library/data/mappers/favorite_song_mapper.dart';
@@ -10,6 +12,9 @@ import 'package:echo/features/library/domain/entities/favorite_song.dart';
 import 'package:echo/features/library/domain/entities/downloaded_song.dart';
 import 'package:echo/features/library/domain/entities/recently_played.dart';
 import 'package:echo/features/library/domain/entities/collection.dart';
+import 'package:echo/features/library/domain/entities/most_played.dart';
+import 'package:echo/features/library/data/mappers/most_played_mapper.dart';
+
 import 'package:echo/features/library/domain/repositories/library_repository.dart';
 import 'package:echo/shared/music/domain/album.dart';
 import 'package:echo/shared/music/domain/artist.dart';
@@ -39,6 +44,8 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
 
   final FavoriteSongMapper _favoriteSongMapper = FavoriteSongMapper();
   final RecentlyPlayedMapper _recentlyPlayedMapper = RecentlyPlayedMapper();
+  final MostPlayedMapper _mostPlayedMapper = MostPlayedMapper();
+
   final FavoriteAlbumMapper _favoriteAlbumMapper = FavoriteAlbumMapper();
   final FavoriteArtistMapper _favoriteArtistMapper = FavoriteArtistMapper();
 
@@ -47,12 +54,16 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
   final List<FavoriteArtist> _favoriteArtists = [];
   final List<DownloadedSong> _downloadedSongs = [];
   final List<RecentlyPlayed> _recentlyPlayed = [];
+  final List<MostPlayed> _mostPlayed = [];
 
   String _favoritesSongsPath(String uid) => 'users/$uid/favorites/songs';
+
   String _favoritesAlbumsPath(String uid) => 'users/$uid/library/savedAlbums';
   String _favoritesArtistsPath(String uid) => 'users/$uid/library/followedArtists';
   String _recentlyPlayedPath(String uid) => 'users/$uid/recently_played';
+  String _mostPlayedPath(String uid) => 'users/$uid/most_played';
   String _savedPlaylistsPath(String uid) => 'users/$uid/library/savedPlaylists';
+
 
   Future<String> _uidOrThrow() async {
     final user = await _auth.currentUser();
@@ -82,8 +93,32 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
       List.unmodifiable(_recentlyPlayed);
 
   @override
+  Stream<List<MostPlayed>> watchMostPlayed() async* {
+    final uid = await _uidOrThrow();
+
+    yield* _firestore
+        .collection(_mostPlayedPath(uid))
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs
+          .map((doc) => _mostPlayedMapper.fromMap(doc.data()));
+
+      final sorted = items.toList()
+        ..sort(
+          (a, b) {
+            final byCount = b.playCount.compareTo(a.playCount);
+            if (byCount != 0) return byCount;
+            return b.lastPlayed.compareTo(a.lastPlayed);
+          },
+        );
+      return sorted;
+    });
+  }
+
+  @override
   Stream<List<RecentlyPlayed>> watchRecentlyPlayed() async* {
     final uid = await _uidOrThrow();
+
 
     yield* _firestore
         .collection(_recentlyPlayedPath(uid))
@@ -227,6 +262,7 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
     required Duration lastPosition,
     required DateTime playedAt,
   }) async {
+
     final uid = await _uidOrThrow();
 
     // Ensure cache is consistent before mapping.
@@ -401,7 +437,79 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
     _deleteFromFirestore(songId);
   }
 
+  @override
+  void addMostPlayedEntry({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required DateTime lastPlayed,
+  }) {
+    // Update local cache.
+    _mostPlayed.removeWhere((m) => m.songId == songId);
+
+    final existing = _mostPlayed.where((m) => m.songId == songId);
+    final nextCount = existing.isNotEmpty ? existing.first.playCount + 1 : 1;
+
+    _mostPlayed.add(
+      MostPlayed(
+        songId: songId,
+        playCount: nextCount,
+        lastPlayed: lastPlayed,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+      ),
+    );
+
+    _mostPlayed.sort((a, b) {
+      final byCount = b.playCount.compareTo(a.playCount);
+      if (byCount != 0) return byCount;
+      return b.lastPlayed.compareTo(a.lastPlayed);
+    });
+
+    _addMostPlayedEntryToFirestore(
+      songId: songId,
+      title: title,
+      artist: artist,
+      artworkUrl: artworkUrl,
+      duration: duration,
+      lastPlayed: lastPlayed,
+    );
+  }
+
+  Future<void> _addMostPlayedEntryToFirestore({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required DateTime lastPlayed,
+  }) async {
+    final uid = await _uidOrThrow();
+
+    final docRef = _firestore.collection(_mostPlayedPath(uid)).doc(songId);
+
+    // Best-effort atomicity: we use a Firestore-side increment if supported by the adapter.
+    // (This repository pattern avoids introducing new adapter APIs in this sprint.)
+    await docRef.set(
+      <String, dynamic>{
+        'songId': songId,
+        'playCount': FieldValue.increment(1),
+        'lastPlayed': lastPlayed.toIso8601String(),
+        'title': title,
+        'artist': artist,
+        'artworkUrl': artworkUrl,
+        'durationMs': duration.inMilliseconds,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   Future<void> _deleteFromFirestore(String songId) async {
+
     final uid = await _uidOrThrow();
     await _firestore.collection(_recentlyPlayedPath(uid)).doc(songId).delete();
   }

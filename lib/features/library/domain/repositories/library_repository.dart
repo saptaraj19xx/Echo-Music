@@ -8,6 +8,8 @@ import 'package:echo/features/library/domain/entities/favorite_artist.dart';
 import 'package:echo/features/library/domain/entities/downloaded_song.dart';
 import 'package:echo/features/library/domain/entities/recently_played.dart';
 import 'package:echo/features/library/domain/entities/collection.dart';
+import 'package:echo/features/library/domain/entities/most_played.dart';
+
 
 abstract class LibraryRepository {
   List<FavoriteSong> getFavoriteSongs();
@@ -16,6 +18,9 @@ abstract class LibraryRepository {
   List<DownloadedSong> getDownloadedSongs();
   List<RecentlyPlayed> getRecentlyPlayed();
   Stream<List<RecentlyPlayed>> watchRecentlyPlayed();
+
+  Stream<List<MostPlayed>> watchMostPlayed();
+
 
   List<Collection> getCollections();
 
@@ -40,6 +45,16 @@ abstract class LibraryRepository {
     required DateTime playedAt,
   });
   void removeRecentlyPlayed(String songId);
+
+  void addMostPlayedEntry({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required DateTime lastPlayed,
+  });
+
 
 
   List<Song> getFavoriteSongsSongs();

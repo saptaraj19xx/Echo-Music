@@ -22,11 +22,15 @@ import 'package:echo/features/home/presentation/widgets/genre_chip.dart';
 import 'package:echo/features/library/providers/recently_played_stream_provider.dart';
 import 'package:echo/features/library/domain/entities/recently_played.dart';
 import 'package:echo/features/home/presentation/widgets/recently_played_live_card.dart';
-
-
+import 'package:echo/features/library/providers/most_played_stream_provider.dart';
+import 'package:echo/features/library/domain/entities/most_played.dart';
+import 'package:echo/features/home/presentation/widgets/most_played_live_card.dart';
+import 'package:echo/features/library/presentation/pages/most_played_page.dart';
 
 import 'package:echo/features/player/presentation/pages/full_player_page.dart';
+
 import 'package:echo/features/player/presentation/providers/player_providers.dart';
+
 
 /// Echo Home page — displays all home sections in a scrollable layout.
 class HomePage extends ConsumerStatefulWidget {
@@ -61,8 +65,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     final userName = ref.watch(userNameProvider);
 
     final recentlyPlayed = ref.watch(recentlyPlayedStreamProvider);
+    final mostPlayed = ref.watch(mostPlayedStreamProvider);
 
     final madeForYouPlaylists = ref.watch(madeForYouProvider);
+
     final trendingNow = ref.watch(trendingProvider);
     final newReleases = ref.watch(newReleasesProvider);
 
@@ -169,10 +175,53 @@ class _HomePageState extends ConsumerState<HomePage> {
                           error: (error, _) => const SizedBox.shrink(),
                         ),
 
+                        const SizedBox(height: AppSpacing.md),
+                        const SectionHeader(title: 'Most Played'),
+                        const SizedBox(height: AppSpacing.sm),
+                        mostPlayed.when(
+                          data: (mostPlayedList) {
+                            final top3 = mostPlayedList.take(3).toList();
+                            if (top3.isEmpty) {
+                              return const MostPlayedEmptyCard();
+                            }
+
+                            // Sort: highest play count first, then most recently played.
+                            top3.sort((a, b) {
+                              final playCompare = b.playCount.compareTo(a.playCount);
+                              if (playCompare != 0) return playCompare;
+                              return b.lastPlayed.compareTo(a.lastPlayed);
+                            });
+
+                            return MostPlayedLiveCard(
+                              items: top3,
+                              liveItemCount: mostPlayedList.length,
+                              onSeeAll: () {
+                                Navigator.of(context).push(
+                              MaterialPageRoute(
+                                    builder: (_) => const MostPlayedPage(),
+                                  ),
+
+                                );
+                              },
+
+                              onSongTap: (most) => _onSongTap(
+                                Song(
+                                  id: most.songId,
+                                  title: most.title,
+                                  artistId: most.artist,
+                                  artistName: most.artist,
+                                ),
+                              ),
+                            );
+                          },
+                          loading: () => const SizedBox.shrink(),
+                          error: (error, _) => const SizedBox.shrink(),
+                        ),
                       ],
                     ),
                   ),
                 ),
+
 
 
                 SliverToBoxAdapter(

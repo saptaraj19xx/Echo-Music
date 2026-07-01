@@ -8,7 +8,8 @@ import 'package:echo/features/library/presentation/providers/library_providers.d
 
 import 'package:echo/shared/music/domain/song.dart';
 
-/// Automatically writes recently played entries when a playback threshold is met.
+/// Automatically writes recently played + most played entries when a playback
+/// threshold is met.
 ///
 /// Rules:
 /// - threshold: position >= 30s OR position >= 50% of duration
@@ -60,15 +61,27 @@ class RecentlyPlayedTracker extends AsyncNotifier<void> {
       final artworkUrl = song.albumArtUrl ?? '';
 
 
-      ref.read(libraryRepositoryProvider).addRecentlyPlayedEntry(
-            songId: songId,
-            title: title,
-            artist: artist,
-            artworkUrl: artworkUrl,
-            duration: duration,
-            lastPosition: lastPosition,
-            playedAt: playedAt,
-          );
+      final libraryRepository = ref.read(libraryRepositoryProvider);
+
+      libraryRepository.addRecentlyPlayedEntry(
+        songId: songId,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+        lastPosition: lastPosition,
+        playedAt: playedAt,
+      );
+
+      libraryRepository.addMostPlayedEntry(
+        songId: songId,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+        lastPlayed: playedAt,
+      );
+
 
 
 
