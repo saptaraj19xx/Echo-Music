@@ -3,8 +3,13 @@ import 'package:echo/features/library/domain/entities/favorite_album.dart';
 import 'package:echo/features/library/domain/entities/favorite_artist.dart';
 import 'package:echo/features/library/domain/entities/downloaded_song.dart';
 import 'package:echo/features/library/domain/entities/recently_played.dart';
+import 'dart:async';
+
 import 'package:echo/features/library/domain/entities/collection.dart';
 import 'package:echo/shared/music/domain/song.dart';
+
+
+
 import 'package:echo/shared/music/domain/album.dart';
 import 'package:echo/shared/music/domain/artist.dart';
 import 'package:echo/shared/music/domain/playlist.dart';
@@ -32,6 +37,14 @@ class LibraryRepositoryImpl implements LibraryRepository {
 
   @override
   List<RecentlyPlayed> getRecentlyPlayed() => List.unmodifiable(_recentlyPlayed);
+
+  final StreamController<List<RecentlyPlayed>> _recentlyPlayedController =
+      StreamController<List<RecentlyPlayed>>.broadcast();
+
+  @override
+  Stream<List<RecentlyPlayed>> watchRecentlyPlayed() =>
+      _recentlyPlayedController.stream;
+
 
   @override
   List<Collection> getCollections() => List.unmodifiable(_collections);
@@ -78,14 +91,58 @@ class LibraryRepositoryImpl implements LibraryRepository {
     _downloadedSongs.removeWhere((d) => d.songId == songId);
   }
 
+  static const int _recentlyPlayedMaxEntries = 100;
+
   @override
   void addRecentlyPlayed(String songId) {
-    _recentlyPlayed.removeWhere((r) => r.songId == songId);
-    _recentlyPlayed.insert(0, RecentlyPlayed(songId: songId, playedAt: DateTime.now()));
-    if (_recentlyPlayed.length > 50) {
-      _recentlyPlayed.removeRange(50, _recentlyPlayed.length);
-    }
+    // Backward-compatible wrapper: no metadata available here.
+    final now = DateTime.now();
+    addRecentlyPlayedEntry(
+      songId: songId,
+      title: '',
+      artist: '',
+      artworkUrl: '',
+      duration: Duration.zero,
+      lastPosition: Duration.zero,
+      playedAt: now,
+    );
   }
+
+  @override
+  void addRecentlyPlayedEntry({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required Duration lastPosition,
+    required DateTime playedAt,
+  }) {
+    _recentlyPlayed.removeWhere((r) => r.songId == songId);
+    _recentlyPlayed.insert(
+      0,
+      RecentlyPlayed(
+        songId: songId,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+        lastPosition: lastPosition,
+        playedAt: playedAt,
+      ),
+    );
+
+    if (_recentlyPlayed.length > _recentlyPlayedMaxEntries) {
+      _recentlyPlayed.removeRange(
+        _recentlyPlayedMaxEntries,
+        _recentlyPlayed.length,
+      );
+    }
+
+    _recentlyPlayedController.add(List.unmodifiable(_recentlyPlayed));
+  }
+
+
 
   @override
   List<Song> getFavoriteSongsSongs() => const [];
@@ -100,7 +157,15 @@ class LibraryRepositoryImpl implements LibraryRepository {
   List<Song> getDownloadedSongsSongs() => const [];
 
   @override
+  void removeRecentlyPlayed(String songId) {
+    _recentlyPlayed.removeWhere((r) => r.songId == songId);
+    _recentlyPlayedController.add(List.unmodifiable(_recentlyPlayed));
+  }
+
+
+  @override
   List<Song> getRecentlyPlayedSongs() => const [];
+
 
   @override
   List<Playlist> getUserPlaylists() => const [];

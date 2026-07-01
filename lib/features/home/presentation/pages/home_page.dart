@@ -6,6 +6,8 @@ import 'package:echo/app/theme/app_radius.dart';
 import 'package:echo/app/theme/app_spacing.dart';
 import 'package:echo/app/theme/app_typography.dart';
 import 'package:echo/shared/music/domain/song.dart';
+import 'package:echo/shared/music/domain/artist.dart';
+
 import 'package:echo/shared/music/providers/music_providers.dart';
 
 
@@ -17,6 +19,12 @@ import 'package:echo/features/home/presentation/widgets/playlist_card.dart';
 import 'package:echo/features/home/presentation/widgets/section_header.dart';
 import 'package:echo/features/home/presentation/widgets/song_card.dart';
 import 'package:echo/features/home/presentation/widgets/genre_chip.dart';
+import 'package:echo/features/library/providers/recently_played_stream_provider.dart';
+import 'package:echo/features/library/domain/entities/recently_played.dart';
+import 'package:echo/features/home/presentation/widgets/recently_played_live_card.dart';
+
+
+
 import 'package:echo/features/player/presentation/pages/full_player_page.dart';
 import 'package:echo/features/player/presentation/providers/player_providers.dart';
 
@@ -52,7 +60,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final userName = ref.watch(userNameProvider);
 
-    final recentlyPlayed = ref.watch(recentlyPlayedProvider);
+    final recentlyPlayed = ref.watch(recentlyPlayedStreamProvider);
+
     final madeForYouPlaylists = ref.watch(madeForYouProvider);
     final trendingNow = ref.watch(trendingProvider);
     final newReleases = ref.watch(newReleasesProvider);
@@ -139,25 +148,32 @@ class _HomePageState extends ConsumerState<HomePage> {
                         const SectionHeader(title: 'Recently Played'),
                         const SizedBox(height: AppSpacing.sm),
                         recentlyPlayed.when(
-                          data: (songs) {
-                            return HorizontalMusicList(
-                              children: songs
-                                  .map(
-                                    (song) => SongCard(
-                                      song: song,
-                                      onTap: () => _onSongTap(song),
+                          data: (recentlyPlayedList) {
+                            final latest3 = recentlyPlayedList.take(3).toList();
+                            return latest3.isEmpty
+                                ? const RecentlyPlayedEmptyCard()
+                                : RecentlyPlayedLiveCard(
+                                    items: latest3,
+                                    liveItemCount: recentlyPlayedList.length,
+                                    onSongTap: (recent) => _onSongTap(
+                                      Song(
+                                        id: recent.songId,
+                                        title: recent.title,
+                                        artistId: recent.artist,
+                                        artistName: recent.artist,
+                                      ),
                                     ),
-                                  )
-                                  .toList(),
-                            );
+                                  );
                           },
                           loading: () => const SizedBox.shrink(),
                           error: (error, _) => const SizedBox.shrink(),
                         ),
+
                       ],
                     ),
                   ),
                 ),
+
 
                 SliverToBoxAdapter(
                   child: Padding(

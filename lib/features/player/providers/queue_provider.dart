@@ -22,6 +22,16 @@ class QueueNotifier extends StateNotifier<PlaybackQueue> {
     }
   }
 
+  void loadQueueFromQueueItems(List<QueueItem> items, {int startIndex = 0}) {
+    state = state.copyWith(
+      items: items,
+      currentIndex: startIndex.clamp(0, items.length - 1),
+    );
+    if (items.isNotEmpty) {
+      _playerController.playAt(startIndex);
+    }
+  }
+
   void playNext(Song song) {
     final nextIndex = state.currentIndex + 1;
     final newItems = List<QueueItem>.from(state.items);
@@ -47,8 +57,11 @@ class QueueNotifier extends StateNotifier<PlaybackQueue> {
 
     final newItems = List<QueueItem>.from(state.items)..removeAt(index);
     int newIndex = state.currentIndex;
-    if (index < newIndex) newIndex--;
-    else if (index == newIndex) newIndex = newIndex.clamp(0, newItems.length - 1);
+    if (index < newIndex) {
+      newIndex--;
+    } else if (index == newIndex) {
+      newIndex = newIndex.clamp(0, newItems.length - 1);
+    }
 
     state = state.copyWith(
       items: newItems,
@@ -72,9 +85,13 @@ class QueueNotifier extends StateNotifier<PlaybackQueue> {
     newItems.insert(newIndex, movedItem);
 
     int updatedCurrent = state.currentIndex;
-    if (oldIndex == updatedCurrent) updatedCurrent = newIndex;
-    else if (oldIndex < updatedCurrent && newIndex >= updatedCurrent) updatedCurrent--;
-    else if (oldIndex > updatedCurrent && newIndex <= updatedCurrent) updatedCurrent++;
+    if (oldIndex == updatedCurrent) {
+      updatedCurrent = newIndex;
+    } else if (oldIndex < updatedCurrent && newIndex >= updatedCurrent) {
+      updatedCurrent--;
+    } else if (oldIndex > updatedCurrent && newIndex <= updatedCurrent) {
+      updatedCurrent++;
+    }
 
     state = state.copyWith(
       items: newItems,

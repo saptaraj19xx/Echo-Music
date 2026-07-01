@@ -51,7 +51,7 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
   String _favoritesSongsPath(String uid) => 'users/$uid/favorites/songs';
   String _favoritesAlbumsPath(String uid) => 'users/$uid/library/savedAlbums';
   String _favoritesArtistsPath(String uid) => 'users/$uid/library/followedArtists';
-  String _recentlyPlayedPath(String uid) => 'users/$uid/recentlyPlayed';
+  String _recentlyPlayedPath(String uid) => 'users/$uid/recently_played';
   String _savedPlaylistsPath(String uid) => 'users/$uid/library/savedPlaylists';
 
   Future<String> _uidOrThrow() async {
@@ -80,6 +80,24 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
   @override
   List<RecentlyPlayed> getRecentlyPlayed() =>
       List.unmodifiable(_recentlyPlayed);
+
+  @override
+  Stream<List<RecentlyPlayed>> watchRecentlyPlayed() async* {
+    final uid = await _uidOrThrow();
+
+    yield* _firestore
+        .collection(_recentlyPlayedPath(uid))
+        .snapshots()
+        .map((snapshot) {
+      final items = snapshot.docs
+          .map((doc) => _recentlyPlayedMapper.fromMap(doc.data()));
+      // Firestore has no guaranteed ordering unless stored; keep deterministic newest-first:
+      final sorted = items.toList()
+        ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
+      return sorted;
+    });
+  }
+
 
   @override
   List<Collection> getCollections() => const [];
@@ -119,42 +137,129 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
   // ----------------------------
   @override
   void addRecentlyPlayed(String songId) {
-    _addRecentlyPlayedToCache(songId);
-    _addRecentlyPlayedToFirestore(songId);
+    // Backward-compatible wrapper: no metadata available here.
+    // Kept for incremental migration; prefer addRecentlyPlayedEntry for new writes.
+    final now = DateTime.now();
+    addRecentlyPlayedEntry(
+      songId: songId,
+      title: '',
+      artist: '',
+      artworkUrl: '',
+      duration: Duration.zero,
+      lastPosition: Duration.zero,
+      playedAt: now,
+    );
   }
 
-  void _addRecentlyPlayedToCache(String songId) {
-    final now = DateTime.now();
+  @override
+  void addRecentlyPlayedEntry({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required Duration lastPosition,
+    required DateTime playedAt,
+  }) {
+    _addRecentlyPlayedEntryToCache(
+      songId: songId,
+      title: title,
+      artist: artist,
+      artworkUrl: artworkUrl,
+      duration: duration,
+      lastPosition: lastPosition,
+      playedAt: playedAt,
+    );
+    _addRecentlyPlayedEntryToFirestore(
+      songId: songId,
+      title: title,
+      artist: artist,
+      artworkUrl: artworkUrl,
+      duration: duration,
+      lastPosition: lastPosition,
+      playedAt: playedAt,
+    );
+  }
 
+
+  static const int _recentlyPlayedMaxEntries = 100;
+
+  void _addRecentlyPlayedEntryToCache({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required Duration lastPosition,
+    required DateTime playedAt,
+  }) {
     _recentlyPlayed.removeWhere((r) => r.songId == songId);
-    _recentlyPlayed.insert(0, RecentlyPlayed(songId: songId, playedAt: now));
-    if (_recentlyPlayed.length > 50) {
-      _recentlyPlayed.removeRange(50, _recentlyPlayed.length);
+
+    _recentlyPlayed.insert(
+      0,
+      RecentlyPlayed(
+        songId: songId,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+        lastPosition: lastPosition,
+        playedAt: playedAt,
+      ),
+    );
+
+    if (_recentlyPlayed.length > _recentlyPlayedMaxEntries) {
+      _recentlyPlayed.removeRange(
+        _recentlyPlayedMaxEntries,
+        _recentlyPlayed.length,
+      );
     }
   }
 
-  Future<void> _addRecentlyPlayedToFirestore(String songId) async {
 
 
-
+  Future<void> _addRecentlyPlayedEntryToFirestore({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required Duration lastPosition,
+    required DateTime playedAt,
+  }) async {
     final uid = await _uidOrThrow();
 
-    final now = DateTime.now();
-
-
-    // Update in-memory list newest-first with max 50.
+    // Ensure cache is consistent before mapping.
     _recentlyPlayed.removeWhere((r) => r.songId == songId);
-    _recentlyPlayed.insert(0, RecentlyPlayed(songId: songId, playedAt: now));
-    if (_recentlyPlayed.length > 50) {
-      _recentlyPlayed.removeRange(50, _recentlyPlayed.length);
+    _recentlyPlayed.insert(
+      0,
+      RecentlyPlayed(
+        songId: songId,
+        title: title,
+        artist: artist,
+        artworkUrl: artworkUrl,
+        duration: duration,
+        lastPosition: lastPosition,
+        playedAt: playedAt,
+      ),
+    );
+    if (_recentlyPlayed.length > _recentlyPlayedMaxEntries) {
+      _recentlyPlayed.removeRange(
+        _recentlyPlayedMaxEntries,
+        _recentlyPlayed.length,
+      );
     }
 
-    // Upsert timestamp on replay.
-    await _firestore.collection(_recentlyPlayedPath(uid)).doc(songId).set(
-          _recentlyPlayedMapper
-              .toMap(_recentlyPlayed.firstWhere((r) => r.songId == songId)),
+    await _firestore
+        .collection(_recentlyPlayedPath(uid))
+        .doc(songId)
+        .set(
+          _recentlyPlayedMapper.toMap(
+            _recentlyPlayed.firstWhere((r) => r.songId == songId),
+          ),
         );
   }
+
 
   // Repository interface expects sync getters (read-only in-memory cache).
 
@@ -289,6 +394,17 @@ class FirestoreLibraryRepositoryImpl implements LibraryRepository {
 
   @override
   List<Song> getDownloadedSongsSongs() => const [];
+
+  @override
+  void removeRecentlyPlayed(String songId) {
+    _recentlyPlayed.removeWhere((r) => r.songId == songId);
+    _deleteFromFirestore(songId);
+  }
+
+  Future<void> _deleteFromFirestore(String songId) async {
+    final uid = await _uidOrThrow();
+    await _firestore.collection(_recentlyPlayedPath(uid)).doc(songId).delete();
+  }
 
   @override
   List<Song> getRecentlyPlayedSongs() => const [];

@@ -10,6 +10,19 @@ class QueueItem {
     this.isPlaying = false,
   });
 
+  factory QueueItem.byId(String songId) {
+    return QueueItem(
+      song: Song(
+        id: songId,
+        title: songId,
+        artistId: songId,
+        artistName: 'Unknown artist',
+        albumArtUrl: null,
+        audioUrl: '',
+      ),
+    );
+  }
+
   QueueItem copyWith({
     Song? song,
     bool? isPlaying,

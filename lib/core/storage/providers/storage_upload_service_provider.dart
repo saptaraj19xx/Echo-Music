@@ -11,5 +11,3 @@ import 'firebase_storage_upload_service_provider.dart';
 final storageUploadServiceProvider = Provider<StorageUploadService>((ref) {
   return ref.watch(firebaseStorageUploadServiceProvider);
 });
-
-

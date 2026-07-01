@@ -125,6 +125,11 @@ class RecentNotifier extends StateNotifier<UiState<void>> {
     _repository.addRecentlyPlayed(songId);
     state = const Success(null);
   }
+
+  Future<void> remove(String songId) async {
+    _repository.removeRecentlyPlayed(songId);
+    state = const Success(null);
+  }
 }
 
 final recentProvider = StateNotifierProvider<RecentNotifier, UiState<void>>(

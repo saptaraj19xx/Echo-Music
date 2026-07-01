@@ -15,6 +15,8 @@ abstract class LibraryRepository {
   List<FavoriteArtist> getFavoriteArtists();
   List<DownloadedSong> getDownloadedSongs();
   List<RecentlyPlayed> getRecentlyPlayed();
+  Stream<List<RecentlyPlayed>> watchRecentlyPlayed();
+
   List<Collection> getCollections();
 
   void addFavoriteSong(String songId);
@@ -28,6 +30,17 @@ abstract class LibraryRepository {
   void removeDownload(String songId);
 
   void addRecentlyPlayed(String songId);
+  void addRecentlyPlayedEntry({
+    required String songId,
+    required String title,
+    required String artist,
+    required String artworkUrl,
+    required Duration duration,
+    required Duration lastPosition,
+    required DateTime playedAt,
+  });
+  void removeRecentlyPlayed(String songId);
+
 
   List<Song> getFavoriteSongsSongs();
   List<Album> getFavoriteAlbumsAlbums();

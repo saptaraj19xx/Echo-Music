@@ -9,6 +9,8 @@ import 'package:echo/features/library/domain/entities/recently_played.dart';
 import 'package:echo/features/library/domain/entities/collection.dart';
 import 'package:echo/features/library/domain/entities/user_library.dart';
 import 'package:echo/features/library/presentation/providers/library_providers.dart';
+import 'package:echo/features/library/providers/recently_played_stream_provider.dart';
+
 import 'package:echo/features/library/presentation/widgets/library_section.dart';
 import 'package:echo/features/library/presentation/widgets/context_menu.dart';
 import 'package:echo/features/library/presentation/widgets/library_empty_state.dart';
@@ -33,18 +35,21 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final favoriteAlbums = libraryState.getFavoriteAlbums();
     final favoriteArtists = libraryState.getFavoriteArtists();
     final downloadedSongs = libraryState.getDownloadedSongs();
-    final recentlyPlayed = libraryState.getRecentlyPlayed();
+    final recentlyPlayedAsync = ref.watch(recentlyPlayedStreamProvider);
+
     final collections = libraryState.getCollections();
     final userPlaylists = libraryState.getUserPlaylists();
 
+    // Recently played is streamed via Riverpod; we still build the rest of the library from cache.
     final library = UserLibrary(
       favoriteSongs: favoriteSongs,
       favoriteAlbums: favoriteAlbums,
       favoriteArtists: favoriteArtists,
       downloadedSongs: downloadedSongs,
-      recentlyPlayed: recentlyPlayed,
+      recentlyPlayed: recentlyPlayedAsync.asData?.value ?? const [],
       collections: collections,
     );
+
 
     return Scaffold(
       appBar: AppBar(
@@ -86,6 +91,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
       body: Column(
         children: [
           if (_activeFilters.isNotEmpty)
+
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -111,9 +117,44 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                 ],
               ),
             ),
-          Expanded(
-            child: _buildLibraryContent(library, userPlaylists),
+        Expanded(
+          child: recentlyPlayedAsync.when(
+            loading: () => _buildLibraryContent(
+              UserLibrary(
+                favoriteSongs: favoriteSongs,
+                favoriteAlbums: favoriteAlbums,
+                favoriteArtists: favoriteArtists,
+                downloadedSongs: downloadedSongs,
+                recentlyPlayed: const [],
+                collections: collections,
+              ),
+              userPlaylists,
+            ),
+            error: (_, __) => _buildLibraryContent(
+              UserLibrary(
+                favoriteSongs: favoriteSongs,
+                favoriteAlbums: favoriteAlbums,
+                favoriteArtists: favoriteArtists,
+                downloadedSongs: downloadedSongs,
+                recentlyPlayed: const [],
+                collections: collections,
+              ),
+              userPlaylists,
+            ),
+            data: (rp) => _buildLibraryContent(
+              UserLibrary(
+                favoriteSongs: favoriteSongs,
+                favoriteAlbums: favoriteAlbums,
+                favoriteArtists: favoriteArtists,
+                downloadedSongs: downloadedSongs,
+                recentlyPlayed: rp,
+                collections: collections,
+              ),
+              userPlaylists,
+            ),
           ),
+        ),
+
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
